@@ -1,7 +1,11 @@
-import { FunctionComponent, useState } from "react";
+import { FunctionComponent, useState, useEffect, ChangeEvent } from "react";
+import { useParams } from "react-router-dom";
 import Select, { MultiValue, SingleValue, StylesConfig } from "react-select";
 import "@/pages/profile/Profile.css";
 import VerifiedBadge from "@/components/icons/CertifiedBadge";
+import UserService from "@/services/UserService";
+import { toCapitalizedWords } from "@/helpers/StringHelper";
+import Loader from "@/components/loader/Loader";
 
 interface ProfileProps {
   email: string;
@@ -24,62 +28,96 @@ interface Option {
   label: string;
 }
 
-const initialProfile = {
-  email: "johndoe@gmail.com",
-  password: "Azerty",
-  firstname: "John",
-  lastname: "Doe",
-  username: "johndoe",
-  birthday: "1990-01-01",
-  gender: "MALE",
-  nationality: "American",
-  picture: "https://randomuser.me/api/portraits/men/33.jpg",
-  bio: "Hello, I am John Doe.",
+const initialProfile: ProfileProps = {
+  email: "",
+  password: "",
+  firstname: "",
+  lastname: "",
+  username: "",
+  birthday: "",
+  gender: "UNSPECIFIED",
+  nationality: "UNSPECIFIED",
+  picture: "",
+  bio: "",
   visibility: "PUBLIC",
-  interests: ["coding", "music", "sports"],
-  role: "admin", // Change this value to test different roles
+  interests: [],
+  role: "user",
 };
 
-const genderOptions: Option[] = [
-  { value: "MALE", label: "Male" },
-  { value: "FEMALE", label: "Female" },
-];
-
-const visibilityOptions: Option[] = [
-  { value: "PUBLIC", label: "Public" },
-  { value: "PRIVATE", label: "Private" },
-];
-
-const interestsOptions: Option[] = [
-  { value: "coding", label: "Coding" },
-  { value: "music", label: "Music" },
-  { value: "sports", label: "Sports" },
-  { value: "reading", label: "Reading" },
-  { value: "travel", label: "Travel" },
-];
-
-const countryOptions: Option[] = [
-  { value: "American", label: "United States" },
-  { value: "French", label: "France" },
-  { value: "German", label: "Germany" },
-  { value: "Indian", label: "India" },
-  // Ajoutez d'autres pays ici
-];
-
 const Profile: FunctionComponent = () => {
+  const { id } = useParams<{ id: string }>();
   const [profile, setProfile] = useState<ProfileProps>(initialProfile);
+  const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [showEmailPopup, setShowEmailPopup] = useState(false);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [globalError, setGlobalError] = useState<string | null>(null);
   const [showPasswordPopup, setShowPasswordPopup] = useState(false);
   const [passwords, setPasswords] = useState({
     oldPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
-  const [email, setEmail] = useState(profile.email);
+  const [interestsOptions, setInterestsOptions] = useState<Option[]>([]);
+  const [countryOptions, setCountryOptions] = useState<Option[]>([]);
+  const [genderOptions, setGenderOptions] = useState<Option[]>([]);
+  const [visibilityOptions, setVisibilityOptions] = useState<Option[]>([]);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const profileData = await UserService.getProfile(id);
+        setProfile(profileData);
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Failed to fetch profile", error);
+        if (error.response?.data?.message === "User not found") {
+          setGlobalError("User not found");
+        } else {
+          setGlobalError("Failed to fetch profile, please try again later");
+        }
+        setIsLoading(false);
+      }
+    };
+
+    const fetchEnumerations = async () => {
+      try {
+        const response = await UserService.getOptions();
+
+        setInterestsOptions(
+          response.data.interests.map((item: string) => ({
+            value: item,
+            label: toCapitalizedWords(item),
+          }))
+        );
+        setCountryOptions(
+          response.data.nationalities.map((item: string) => ({
+            value: item,
+            label: toCapitalizedWords(item),
+          }))
+        );
+        setGenderOptions(
+          response.data.genders.map((item: string) => ({
+            value: item,
+            label: toCapitalizedWords(item),
+          }))
+        );
+        setVisibilityOptions(
+          response.data.visibilities.map((item: string) => ({
+            value: item,
+            label: toCapitalizedWords(item),
+          }))
+        );
+      } catch (error) {
+        setGlobalError("Something went wrong, please come back later");
+      }
+    };
+
+    fetchProfile();
+    fetchEnumerations();
+  }, [id]);
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     setProfile({ ...profile, [name]: value });
@@ -102,17 +140,42 @@ const Profile: FunctionComponent = () => {
     setProfile({ ...profile, interests: selectedInterests });
   };
 
+  const validateProfile = () => {
+    const newErrors: { [key: string]: string } = {};
+    const nameRegex = /^[\p{L} '-]+$/u;
+
+    if (!nameRegex.test(profile.firstname) || profile.firstname.length > 64) {
+      newErrors.firstname =
+        "Firstname can only contain letters, spaces, hyphens, and apostrophes and must be at most 64 characters long";
+    }
+    if (!nameRegex.test(profile.lastname) || profile.lastname.length > 64) {
+      newErrors.lastname =
+        "Lastname can only contain letters, spaces, hyphens, and apostrophes and must be at most 64 characters long";
+    }
+    if (!profile.birthday) {
+      newErrors.birthday = "Birthday cannot be null";
+    } else if (new Date(profile.birthday) >= new Date()) {
+      newErrors.birthday = "Birthday cannot be in the future";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleEditClick = () => {
     setIsEditing(true);
   };
 
-  const handleSaveClick = () => {
-    // TODO: Implement the save functionality
-    setIsEditing(false);
-  };
+  const handleSaveClick = async () => {
+    if (!validateProfile()) return;
 
-  const handleEmailPopupClick = () => {
-    setShowEmailPopup(true);
+    try {
+      await UserService.updateProfile(id, profile);
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Failed to update profile", error);
+      setGlobalError("Failed to update profile, please try again later.");
+    }
   };
 
   const handlePasswordPopupClick = () => {
@@ -120,17 +183,44 @@ const Profile: FunctionComponent = () => {
   };
 
   const closePopup = () => {
-    setShowEmailPopup(false);
     setShowPasswordPopup(false);
   };
 
-  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePasswordChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setPasswords({ ...passwords, [name]: value });
   };
 
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEmail(e.target.value);
+  const validatePasswordChange = () => {
+    const newErrors: { [key: string]: string } = {};
+    const passwordRegex =
+      /^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[!#$%&*+<=>?@^_-]).{8,128}$/;
+
+    if (!passwordRegex.test(passwords.newPassword)) {
+      newErrors.newPassword =
+        "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (! # $ % & * + - < = > ? @ ^ _)";
+    }
+    if (passwords.newPassword !== passwords.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handlePasswordSubmit = async () => {
+    if (!validatePasswordChange()) return;
+
+    try {
+      await UserService.changePassword(id, {
+        old_password: passwords.oldPassword,
+        new_password: passwords.newPassword,
+      });
+      closePopup();
+    } catch (error) {
+      console.error("Failed to change password", error);
+      setGlobalError("Failed to change password, please try again later.");
+    }
   };
 
   const customSelectStyles: StylesConfig<Option, boolean> = {
@@ -183,6 +273,14 @@ const Profile: FunctionComponent = () => {
     }
   };
 
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  if (globalError === "User not found") {
+    return <p>User not found</p>;
+  }
+
   return (
     <div className="profile-page">
       <div className="profile-left">
@@ -197,8 +295,15 @@ const Profile: FunctionComponent = () => {
         </div>
         <p>{profile.email}</p>
         <p>{profile.bio}</p>
+        <button
+          className="change-password-button"
+          onClick={handlePasswordPopupClick}
+        >
+          Change Password
+        </button>
       </div>
       <div className="profile-center">
+        {globalError && <div className="error global-error">{globalError}</div>}
         <label>
           Firstname:
           <input
@@ -208,6 +313,9 @@ const Profile: FunctionComponent = () => {
             onChange={handleInputChange}
             disabled={!isEditing}
           />
+          {errors.firstname && (
+            <span className="error">{errors.firstname}</span>
+          )}
         </label>
         <label>
           Lastname:
@@ -218,6 +326,7 @@ const Profile: FunctionComponent = () => {
             onChange={handleInputChange}
             disabled={!isEditing}
           />
+          {errors.lastname && <span className="error">{errors.lastname}</span>}
         </label>
         <label>
           Username:
@@ -238,6 +347,7 @@ const Profile: FunctionComponent = () => {
             onChange={handleInputChange}
             disabled={!isEditing}
           />
+          {errors.birthday && <span className="error">{errors.birthday}</span>}
         </label>
         <label>
           Gender:
@@ -321,77 +431,60 @@ const Profile: FunctionComponent = () => {
           )}
         </div>
       </div>
-      <div className="profile-right">
-        <button onClick={handleEmailPopupClick}>Change Email</button>
-        <button onClick={handlePasswordPopupClick}>Change Password</button>
-      </div>
-      {showEmailPopup && (
-        <div className="popup">
-          <div className="popup-content">
-            <h3>Change Email</h3>
-            <input
-              type="email"
-              name="email"
-              value={email}
-              onChange={handleEmailChange}
-            />
-            <input
-              type="password"
-              name="password"
-              placeholder="Password"
-              onChange={handlePasswordChange}
-            />
-            <div className="popup-buttons">
-              <button className="close-button" onClick={closePopup}>
-                Close
-              </button>
-              <button
-                className="submit-button"
-                onClick={() => {
-                  /* Implement email change */
-                }}
-              >
-                Submit
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       {showPasswordPopup && (
         <div className="popup">
           <div className="popup-content">
             <h3>Change Password</h3>
-            <input
-              type="password"
-              name="oldPassword"
-              value={passwords.oldPassword}
-              onChange={handlePasswordChange}
-              placeholder="Old Password"
-            />
-            <input
-              type="password"
-              name="newPassword"
-              value={passwords.newPassword}
-              onChange={handlePasswordChange}
-              placeholder="New Password"
-            />
-            <input
-              type="password"
-              name="confirmPassword"
-              value={passwords.confirmPassword}
-              onChange={handlePasswordChange}
-              placeholder="Confirm Password"
-            />
+            {globalError && (
+              <div className="error global-error">{globalError}</div>
+            )}
+            <label>
+              Old Password:
+              <input
+                type="password"
+                name="oldPassword"
+                value={passwords.oldPassword}
+                onChange={handlePasswordChange}
+                placeholder="Old Password"
+                required
+              />
+              {errors.oldPassword && (
+                <span className="error">{errors.oldPassword}</span>
+              )}
+            </label>
+            <label>
+              New Password:
+              <input
+                type="password"
+                name="newPassword"
+                value={passwords.newPassword}
+                onChange={handlePasswordChange}
+                placeholder="New Password"
+                required
+              />
+              {errors.newPassword && (
+                <span className="error">{errors.newPassword}</span>
+              )}
+            </label>
+            <label>
+              Confirm Password:
+              <input
+                type="password"
+                name="confirmPassword"
+                value={passwords.confirmPassword}
+                onChange={handlePasswordChange}
+                placeholder="Confirm Password"
+                required
+              />
+              {errors.confirmPassword && (
+                <span className="error">{errors.confirmPassword}</span>
+              )}
+            </label>
             <div className="popup-buttons">
               <button className="close-button" onClick={closePopup}>
                 Close
               </button>
-              <button
-                className="submit-button"
-                onClick={() => {
-                  /* Implement password change */
-                }}
-              >
+              <button className="submit-button" onClick={handlePasswordSubmit}>
                 Submit
               </button>
             </div>

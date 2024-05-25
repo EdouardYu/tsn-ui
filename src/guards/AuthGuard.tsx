@@ -14,8 +14,13 @@ const isAuthenticated = (): boolean => {
   try {
     const payload = JSON.parse(atob(token.split(".")[1]));
     const isExpired = payload.exp * 1000 < Date.now();
-    return !isExpired;
+    if (isExpired) {
+      localStorage.removeItem("authToken");
+      return false;
+    }
+    return true;
   } catch (e) {
+    localStorage.removeItem("authToken");
     return false;
   }
 };

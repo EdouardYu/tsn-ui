@@ -1,5 +1,4 @@
-// src/services/AuthService.ts
-import axios from "axios";
+import axiosInstance from "@/services/axiosConfig";
 
 interface SignUpFormData {
   email: string;
@@ -25,34 +24,28 @@ interface ResetPasswordFormData {
 
 const AuthService = {
   signup: async (formData: SignUpFormData) => {
-    await axios.post("http://localhost:8080/api/signup", formData);
+    await axiosInstance.post("/signup", formData);
   },
 
   activate: async (email: string, code: string) => {
-    await axios.post("http://localhost:8080/api/activate", {
-      email,
-      code,
-    });
+    await axiosInstance.post("/activate", { email, code });
   },
 
   resendActivationCode: async (email: string) => {
-    await axios.post("http://localhost:8080/api/activate/new", { email });
+    await axiosInstance.post("/activate/new", { email });
   },
 
   signin: async (formData: SignInFormData) => {
-    const response = await axios.post(
-      "http://localhost:8080/api/signin",
-      formData
-    );
+    const response = await axiosInstance.post("/signin", formData);
     return response.data;
   },
 
   sendResetPasswordEmail: async (email: string) => {
-    await axios.post("http://localhost:8080/api/password/reset", { email });
+    await axiosInstance.post("/password/reset", { email });
   },
 
   resetPassword: async (formData: ResetPasswordFormData) => {
-    await axios.post("http://localhost:8080/api/password/new", formData);
+    await axiosInstance.post("/password/new", formData);
   },
 };
 

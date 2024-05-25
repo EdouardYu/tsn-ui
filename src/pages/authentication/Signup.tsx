@@ -10,7 +10,7 @@ import { useNavigate } from "react-router-dom";
 import Select, { MultiValue, SingleValue, StylesConfig } from "react-select";
 import { Link } from "react-router-dom";
 import AuthService from "@/services/AuthService";
-import OptionService from "@/services/OptionService";
+import UserService from "@/services/UserService";
 import { toCapitalizedWords } from "@/helpers/StringHelper";
 import "@/pages/authentication/Auth.css";
 import axios from "axios";
@@ -48,7 +48,7 @@ const Signup: FunctionComponent = () => {
   useEffect(() => {
     const fetchEnumerations = async () => {
       try {
-        const response = await OptionService.getOptions([
+        const response = await UserService.getOptions([
           "interests",
           "nationalities",
           "genders",
