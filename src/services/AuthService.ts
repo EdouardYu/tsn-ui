@@ -47,6 +47,10 @@ const AuthService = {
   resetPassword: async (formData: ResetPasswordFormData) => {
     await axiosInstance.post("/password/new", formData);
   },
+
+  signout: async () => {
+    await axiosInstance.post("/signout");
+  },
 };
 
 export default AuthService;
