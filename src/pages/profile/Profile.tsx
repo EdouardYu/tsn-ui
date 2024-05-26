@@ -1,4 +1,10 @@
-import { FunctionComponent, useState, useEffect, ChangeEvent } from "react";
+import {
+  FunctionComponent,
+  useState,
+  useEffect,
+  ChangeEvent,
+  useRef,
+} from "react";
 import { useParams } from "react-router-dom";
 import Select, { MultiValue, SingleValue, StylesConfig } from "react-select";
 import "@/pages/profile/Profile.css";
@@ -6,6 +12,7 @@ import VerifiedBadge from "@/components/icons/CertifiedBadge";
 import UserService from "@/services/UserService";
 import { toCapitalizedWords } from "@/helpers/StringHelper";
 import Loader from "@/components/loader/Loader";
+import axios from "axios";
 
 interface ProfileProps {
   email: string;
@@ -20,7 +27,7 @@ interface ProfileProps {
   bio: string;
   visibility: string;
   interests: string[];
-  role: string; // 'admin', 'certified', 'user'
+  role: string;
 }
 
 interface Option {
@@ -35,22 +42,28 @@ const initialProfile: ProfileProps = {
   lastname: "",
   username: "",
   birthday: "",
-  gender: "UNSPECIFIED",
-  nationality: "UNSPECIFIED",
+  gender: "",
+  nationality: "",
   picture: "",
   bio: "",
-  visibility: "PUBLIC",
+  visibility: "",
   interests: [],
-  role: "user",
+  role: "",
 };
 
 const Profile: FunctionComponent = () => {
   const { id } = useParams<{ id: string }>();
   const [profile, setProfile] = useState<ProfileProps>(initialProfile);
+  const [editableProfile, setEditableProfile] =
+    useState<ProfileProps>(initialProfile);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [globalError, setGlobalError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordErrors, setPasswordErrors] = useState<{
+    [key: string]: string;
+  }>({});
   const [showPasswordPopup, setShowPasswordPopup] = useState(false);
   const [passwords, setPasswords] = useState({
     oldPassword: "",
@@ -62,47 +75,52 @@ const Profile: FunctionComponent = () => {
   const [genderOptions, setGenderOptions] = useState<Option[]>([]);
   const [visibilityOptions, setVisibilityOptions] = useState<Option[]>([]);
 
+  const flag = useRef(false);
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const profileData = await UserService.getProfile(id);
         setProfile(profileData);
+        setEditableProfile(profileData);
         setIsLoading(false);
       } catch (error) {
-        console.error("Failed to fetch profile", error);
-        if (error.response?.data?.message === "User not found") {
+        if (
+          axios.isAxiosError(error) &&
+          error.response &&
+          error.response.status !== 500
+        )
           setGlobalError("User not found");
-        } else {
-          setGlobalError("Failed to fetch profile, please try again later");
-        }
+        else setGlobalError("Failed to fetch profile, please try again later");
+
         setIsLoading(false);
       }
     };
 
     const fetchEnumerations = async () => {
       try {
-        const response = await UserService.getOptions();
+        const data = await UserService.getOptions();
 
         setInterestsOptions(
-          response.data.interests.map((item: string) => ({
+          data.interests.map((item: string) => ({
             value: item,
             label: toCapitalizedWords(item),
           }))
         );
         setCountryOptions(
-          response.data.nationalities.map((item: string) => ({
+          data.nationalities.map((item: string) => ({
             value: item,
             label: toCapitalizedWords(item),
           }))
         );
         setGenderOptions(
-          response.data.genders.map((item: string) => ({
+          data.genders.map((item: string) => ({
             value: item,
             label: toCapitalizedWords(item),
           }))
         );
         setVisibilityOptions(
-          response.data.visibilities.map((item: string) => ({
+          data.visibilities.map((item: string) => ({
             value: item,
             label: toCapitalizedWords(item),
           }))
@@ -112,50 +130,109 @@ const Profile: FunctionComponent = () => {
       }
     };
 
-    fetchProfile();
-    fetchEnumerations();
+    if (flag.current === false) {
+      fetchProfile();
+      fetchEnumerations();
+    }
+
+    return () => {
+      flag.current = true;
+    };
   }, [id]);
 
   const handleInputChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    setProfile({ ...profile, [name]: value });
+    setEditableProfile({ ...editableProfile, [name]: value });
   };
 
   const handleGenderChange = (newValue: SingleValue<Option>) => {
-    setProfile({ ...profile, gender: newValue ? newValue.value : "" });
+    setEditableProfile({
+      ...editableProfile,
+      gender: newValue ? newValue.value : "",
+    });
   };
 
   const handleNationalityChange = (newValue: SingleValue<Option>) => {
-    setProfile({ ...profile, nationality: newValue ? newValue.value : "" });
+    setEditableProfile({
+      ...editableProfile,
+      nationality: newValue ? newValue.value : "",
+    });
   };
 
   const handleVisibilityChange = (newValue: SingleValue<Option>) => {
-    setProfile({ ...profile, visibility: newValue ? newValue.value : "" });
+    setEditableProfile({
+      ...editableProfile,
+      visibility: newValue ? newValue.value : "",
+    });
   };
 
   const handleInterestsChange = (newValue: MultiValue<Option>) => {
     const selectedInterests = newValue.map((option) => option.value);
-    setProfile({ ...profile, interests: selectedInterests });
+    setEditableProfile({ ...editableProfile, interests: selectedInterests });
   };
 
   const validateProfile = () => {
     const newErrors: { [key: string]: string } = {};
     const nameRegex = /^[\p{L} '-]+$/u;
+    const usernameRegex = /^[\p{L} '-]+$/u;
 
-    if (!nameRegex.test(profile.firstname) || profile.firstname.length > 64) {
+    if (!editableProfile.firstname) {
+      newErrors.firstname = "Firstname is required";
+    } else if (
+      !nameRegex.test(editableProfile.firstname) ||
+      editableProfile.firstname.length > 64
+    ) {
       newErrors.firstname =
         "Firstname can only contain letters, spaces, hyphens, and apostrophes and must be at most 64 characters long";
     }
-    if (!nameRegex.test(profile.lastname) || profile.lastname.length > 64) {
+
+    if (!editableProfile.lastname) {
+      newErrors.lastname = "Lastname is required";
+    } else if (
+      !nameRegex.test(editableProfile.lastname) ||
+      editableProfile.lastname.length > 64
+    ) {
       newErrors.lastname =
         "Lastname can only contain letters, spaces, hyphens, and apostrophes and must be at most 64 characters long";
     }
-    if (!profile.birthday) {
-      newErrors.birthday = "Birthday cannot be null";
-    } else if (new Date(profile.birthday) >= new Date()) {
+
+    if (!editableProfile.username) {
+      newErrors.username = "Username is required";
+    } else if (
+      !usernameRegex.test(editableProfile.username) ||
+      editableProfile.username.length < 3 ||
+      editableProfile.username.length > 128
+    ) {
+      newErrors.username =
+        "Username can only contain letters, spaces, hyphens, and apostrophes and must be between 3 and 128 characters long";
+    }
+
+    if (!editableProfile.birthday) {
+      newErrors.birthday = "Birthday is required";
+    } else if (new Date(editableProfile.birthday) >= new Date()) {
       newErrors.birthday = "Birthday cannot be in the future";
+    }
+
+    if (!editableProfile.gender) {
+      newErrors.gender = "Gender is required";
+    }
+
+    if (!editableProfile.nationality) {
+      newErrors.nationality = "Nationality is required";
+    }
+
+    if (!editableProfile.picture) {
+      newErrors.picture = "Picture is required";
+    }
+
+    if (!editableProfile.visibility) {
+      newErrors.visibility = "Visibility is required";
+    }
+
+    if (editableProfile.interests.length === 0) {
+      newErrors.interests = "You must select at least one interest";
     }
 
     setErrors(newErrors);
@@ -167,14 +244,24 @@ const Profile: FunctionComponent = () => {
   };
 
   const handleSaveClick = async () => {
+    setGlobalError(null);
     if (!validateProfile()) return;
 
     try {
-      await UserService.updateProfile(id, profile);
+      const updatedProfile = await UserService.updateProfile(
+        id,
+        editableProfile
+      );
+      setProfile(updatedProfile);
       setIsEditing(false);
     } catch (error) {
-      console.error("Failed to update profile", error);
-      setGlobalError("Failed to update profile, please try again later.");
+      if (
+        axios.isAxiosError(error) &&
+        error.response &&
+        error.response.status !== 500
+      )
+        setGlobalError(error.response.data.message);
+      else setGlobalError("Failed to update profile, please try again later");
     }
   };
 
@@ -183,6 +270,13 @@ const Profile: FunctionComponent = () => {
   };
 
   const closePopup = () => {
+    setPasswordError(null);
+    setPasswordErrors({});
+    setPasswords({
+      oldPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
     setShowPasswordPopup(false);
   };
 
@@ -204,11 +298,12 @@ const Profile: FunctionComponent = () => {
       newErrors.confirmPassword = "Passwords do not match";
     }
 
-    setErrors(newErrors);
+    setPasswordErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handlePasswordSubmit = async () => {
+    setPasswordError(null);
     if (!validatePasswordChange()) return;
 
     try {
@@ -216,10 +311,21 @@ const Profile: FunctionComponent = () => {
         old_password: passwords.oldPassword,
         new_password: passwords.newPassword,
       });
+      setPasswords({
+        oldPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
       closePopup();
     } catch (error) {
-      console.error("Failed to change password", error);
-      setGlobalError("Failed to change password, please try again later.");
+      if (
+        axios.isAxiosError(error) &&
+        error.response &&
+        error.response.status !== 500
+      )
+        setPasswordError(error.response.data.message);
+      else
+        setPasswordError("Failed to change password, please try again later");
     }
   };
 
@@ -236,6 +342,9 @@ const Profile: FunctionComponent = () => {
     multiValue: (provided) => ({
       ...provided,
       paddingRight: isEditing ? 0 : 2,
+      backgroundColor: "#ddd",
+      borderRadius: "5px",
+      padding: "5px",
     }),
     multiValueLabel: (provided) => ({
       ...provided,
@@ -244,6 +353,12 @@ const Profile: FunctionComponent = () => {
     multiValueRemove: (provided) => ({
       ...provided,
       display: isEditing ? "flex" : "none",
+      color: "#999",
+      cursor: "pointer",
+      ":hover": {
+        backgroundColor: "#ccc",
+        color: "#333",
+      },
     }),
     menu: (provided) => ({
       ...provided,
@@ -264,10 +379,10 @@ const Profile: FunctionComponent = () => {
 
   const getBadgeColor = (role: string) => {
     switch (role) {
-      case "admin":
-        return "gold";
-      case "certified":
-        return "#1d9bf0"; // blue
+      case "ADMINISTRATOR":
+        return "#ffd700";
+      case "CERTIFIED_USER":
+        return "#1d9bf0";
       default:
         return "transparent";
     }
@@ -302,16 +417,17 @@ const Profile: FunctionComponent = () => {
           Change Password
         </button>
       </div>
-      <div className="profile-center">
+      <div className="profile-right">
         {globalError && <div className="error global-error">{globalError}</div>}
         <label>
           Firstname:
           <input
             type="text"
             name="firstname"
-            value={profile.firstname}
+            value={editableProfile.firstname}
             onChange={handleInputChange}
             disabled={!isEditing}
+            required
           />
           {errors.firstname && (
             <span className="error">{errors.firstname}</span>
@@ -322,9 +438,10 @@ const Profile: FunctionComponent = () => {
           <input
             type="text"
             name="lastname"
-            value={profile.lastname}
+            value={editableProfile.lastname}
             onChange={handleInputChange}
             disabled={!isEditing}
+            required
           />
           {errors.lastname && <span className="error">{errors.lastname}</span>}
         </label>
@@ -333,19 +450,22 @@ const Profile: FunctionComponent = () => {
           <input
             type="text"
             name="username"
-            value={profile.username}
+            value={editableProfile.username}
             onChange={handleInputChange}
             disabled={!isEditing}
+            required
           />
+          {errors.username && <span className="error">{errors.username}</span>}
         </label>
         <label>
           Birthday:
           <input
             type="date"
             name="birthday"
-            value={profile.birthday}
+            value={editableProfile.birthday}
             onChange={handleInputChange}
             disabled={!isEditing}
+            required
           />
           {errors.birthday && <span className="error">{errors.birthday}</span>}
         </label>
@@ -357,13 +477,15 @@ const Profile: FunctionComponent = () => {
             name="gender"
             options={genderOptions}
             value={genderOptions.find(
-              (option) => option.value === profile.gender
+              (option) => option.value === editableProfile.gender
             )}
             onChange={(value) =>
               handleGenderChange(value as SingleValue<Option>)
             }
             isDisabled={!isEditing}
+            required
           />
+          {errors.gender && <span className="error">{errors.gender}</span>}
         </label>
         <label>
           Nationality:
@@ -373,19 +495,23 @@ const Profile: FunctionComponent = () => {
             name="nationality"
             options={countryOptions}
             value={countryOptions.find(
-              (option) => option.value === profile.nationality
+              (option) => option.value === editableProfile.nationality
             )}
             onChange={(value) =>
               handleNationalityChange(value as SingleValue<Option>)
             }
             isDisabled={!isEditing}
+            required
           />
+          {errors.nationality && (
+            <span className="error">{errors.nationality}</span>
+          )}
         </label>
         <label>
           Bio:
           <textarea
             name="bio"
-            value={profile.bio}
+            value={editableProfile.bio}
             onChange={handleInputChange}
             disabled={!isEditing}
           />
@@ -398,30 +524,36 @@ const Profile: FunctionComponent = () => {
             name="visibility"
             options={visibilityOptions}
             value={visibilityOptions.find(
-              (option) => option.value === profile.visibility
+              (option) => option.value === editableProfile.visibility
             )}
             onChange={(value) =>
               handleVisibilityChange(value as SingleValue<Option>)
             }
             isDisabled={!isEditing}
+            required
           />
+          {errors.visibility && (
+            <span className="error">{errors.visibility}</span>
+          )}
         </label>
         <label>
           Interests:
           <Select
             className="select"
-            styles={customSelectStyles}
             isMulti
-            name="interests"
             options={interestsOptions}
+            styles={customSelectStyles}
+            onChange={handleInterestsChange}
             value={interestsOptions.filter((option) =>
-              profile.interests.includes(option.value)
+              editableProfile.interests.includes(option.value)
             )}
-            onChange={(value) =>
-              handleInterestsChange(value as MultiValue<Option>)
-            }
+            isOptionDisabled={() => editableProfile.interests.length >= 5}
             isDisabled={!isEditing}
+            required
           />
+          {errors.interests && (
+            <span className="error">{errors.interests}</span>
+          )}
         </label>
         <div className="profile-buttons">
           {!isEditing ? (
@@ -435,8 +567,8 @@ const Profile: FunctionComponent = () => {
         <div className="popup">
           <div className="popup-content">
             <h3>Change Password</h3>
-            {globalError && (
-              <div className="error global-error">{globalError}</div>
+            {passwordError && (
+              <div className="error password-error">{passwordError}</div>
             )}
             <label>
               Old Password:
@@ -448,8 +580,8 @@ const Profile: FunctionComponent = () => {
                 placeholder="Old Password"
                 required
               />
-              {errors.oldPassword && (
-                <span className="error">{errors.oldPassword}</span>
+              {passwordErrors.oldPassword && (
+                <span className="error">{passwordErrors.oldPassword}</span>
               )}
             </label>
             <label>
@@ -462,8 +594,8 @@ const Profile: FunctionComponent = () => {
                 placeholder="New Password"
                 required
               />
-              {errors.newPassword && (
-                <span className="error">{errors.newPassword}</span>
+              {passwordErrors.newPassword && (
+                <span className="error">{passwordErrors.newPassword}</span>
               )}
             </label>
             <label>
@@ -476,8 +608,8 @@ const Profile: FunctionComponent = () => {
                 placeholder="Confirm Password"
                 required
               />
-              {errors.confirmPassword && (
-                <span className="error">{errors.confirmPassword}</span>
+              {passwordErrors.confirmPassword && (
+                <span className="error">{passwordErrors.confirmPassword}</span>
               )}
             </label>
             <div className="popup-buttons">

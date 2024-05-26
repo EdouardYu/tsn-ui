@@ -9,7 +9,7 @@
 }
 
 .profile-left,
-.profile-center {
+.profile-right {
   background-color: #fff;
   padding: 20px;
   border-radius: 10px;
@@ -64,33 +64,33 @@
   background-color: #1877f2;
   color: white;
   padding: 10px 20px;
-  margin-top: 30px; /* Adjust the space above the button */
+  margin-top: 30px;
   border: none;
   border-radius: 5px;
   cursor: pointer;
-  align-self: center; /* Center the button horizontally */
+  align-self: center;
 }
 
 .change-password-button:hover {
   background-color: #155ab6;
 }
 
-.profile-center label {
+.profile-right label {
   display: block;
   margin-bottom: 10px;
   font-weight: bold;
-  text-align: left; /* Align labels to the left */
+  text-align: left;
 }
 
 .select {
   margin: 5px 0;
   font-weight: normal;
   background-color: #fff;
-  text-align: left; /* Align select options to the left */
+  text-align: left;
 }
 
-.profile-center input,
-.profile-center textarea {
+.profile-right input,
+.profile-right textarea {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   width: 100%;
   padding: 9px;
@@ -103,18 +103,18 @@
   color: #333;
 }
 
-.profile-center input:focus,
-.profile-center textarea:focus {
+.profile-right input:focus,
+.profile-right textarea:focus {
   border: 2px solid #1877f2;
   outline: none;
 }
 
-.profile-center input:disabled,
-.profile-center textarea:disabled {
+.profile-right input:disabled,
+.profile-right textarea:disabled {
   color: #333;
 }
 
-.profile-center textarea {
+.profile-right textarea {
   resize: vertical;
 }
 
@@ -179,8 +179,8 @@
 .popup-buttons {
   display: flex;
   justify-content: center;
-  gap: 20px;
-  padding-top: 20px;
+  gap: 10px;
+  padding-top: 10px;
 }
 
 .popup-content button {

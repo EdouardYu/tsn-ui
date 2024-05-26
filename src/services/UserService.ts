@@ -20,7 +20,8 @@ interface ChangePasswordData {
 
 const UserService = {
   updateProfile: async (id: string | undefined, profileData: ProfileData) => {
-    await axiosInstance.put(`/profiles/${id}`, profileData);
+    const response = await axiosInstance.put(`/profiles/${id}`, profileData);
+    return response.data;
   },
 
   changePassword: async (
@@ -40,7 +41,7 @@ const UserService = {
     const response = await axiosInstance.get(
       `/options${filterParam ? `?filters=${filterParam}` : ""}`
     );
-    return response;
+    return response.data;
   },
 };
 

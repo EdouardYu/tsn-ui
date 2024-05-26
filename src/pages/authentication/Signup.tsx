@@ -48,26 +48,26 @@ const Signup: FunctionComponent = () => {
   useEffect(() => {
     const fetchEnumerations = async () => {
       try {
-        const response = await UserService.getOptions([
+        const data = await UserService.getOptions([
           "interests",
           "nationalities",
           "genders",
         ]);
 
         setInterestsOptions(
-          response.data.interests.map((item: string) => ({
+          data.interests.map((item: string) => ({
             value: item,
             label: toCapitalizedWords(item),
           }))
         );
         setCountryOptions(
-          response.data.nationalities.map((item: string) => ({
+          data.nationalities.map((item: string) => ({
             value: item,
             label: toCapitalizedWords(item),
           }))
         );
         setGenderOptions(
-          response.data.genders.map((item: string) => ({
+          data.genders.map((item: string) => ({
             value: item,
             label: toCapitalizedWords(item),
           }))
@@ -137,13 +137,11 @@ const Signup: FunctionComponent = () => {
       newErrors.lastname =
         "Lastname can only contain letters, spaces, hyphens, and apostrophes and must be at most 64 characters long";
     }
-    if (!formData.birthday) {
-      newErrors.birthday = "Birthday cannot be null";
-    } else if (new Date(formData.birthday) >= new Date()) {
+    if (new Date(formData.birthday) >= new Date()) {
       newErrors.birthday = "Birthday cannot be in the future";
     }
-    if (!formData.interests.length) {
-      newErrors.interests = "Interests cannot be empty";
+    if (formData.interests.length === 0) {
+      newErrors.interests = "You must select at least one interest";
     }
 
     setErrors(newErrors);
