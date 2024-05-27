@@ -64,6 +64,13 @@ const UserService = {
     );
     return response.data;
   },
+
+  isFriend: async (userId: number, friendId: number) => {
+    const response = await axiosInstance.get(
+      `/profiles/${userId}/friends/${friendId}`
+    );
+    return response.data;
+  },
 };
 
 export default UserService;

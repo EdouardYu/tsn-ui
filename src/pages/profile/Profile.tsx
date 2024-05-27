@@ -1,4 +1,10 @@
-import { FunctionComponent, useState, useEffect, ChangeEvent } from "react";
+import {
+  FunctionComponent,
+  useState,
+  useEffect,
+  ChangeEvent,
+  useRef,
+} from "react";
 import { useParams, useLocation } from "react-router-dom";
 import Select, { MultiValue, SingleValue, StylesConfig } from "react-select";
 import "@/pages/profile/Profile.css";
@@ -69,13 +75,20 @@ const Profile: FunctionComponent = () => {
   const [countryOptions, setCountryOptions] = useState<Option[]>([]);
   const [genderOptions, setGenderOptions] = useState<Option[]>([]);
   const [visibilityOptions, setVisibilityOptions] = useState<Option[]>([]);
+  const [isFollowed, setIsFollowed] = useState<boolean | null>(null);
+  const [isFriend, setIsFriend] = useState<boolean | null>(null);
+  const currentUserRole = useRef<string | null>(null);
+  const currentUserId = useRef<string | null>(null);
 
   const token = localStorage.getItem("authToken");
-  let currentUserId: string | null = null;
-  if (token) {
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    currentUserId = payload.id;
-  }
+
+  useEffect(() => {
+    if (token) {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      currentUserId.current = payload.id;
+      currentUserRole.current = payload.role;
+    }
+  }, [token]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -84,6 +97,20 @@ const Profile: FunctionComponent = () => {
         const profileData = await UserService.getProfile(id);
         setProfile(profileData);
         setEditableProfile(profileData);
+
+        if (currentUserId.current !== id) {
+          const followed = await UserService.userFollowed(
+            Number(currentUserId.current),
+            Number(id)
+          );
+          setIsFollowed(followed);
+
+          const friendStatus = await UserService.isFriend(
+            Number(currentUserId.current),
+            Number(id)
+          );
+          setIsFriend(friendStatus);
+        }
         setIsLoading(false);
       } catch (error) {
         if (
@@ -190,7 +217,7 @@ const Profile: FunctionComponent = () => {
       editableProfile.lastname.length > 64
     ) {
       newErrors.lastname =
-        "Lastname can only contain letters, spaces, hyphens, et apostrophes and must be at most 64 characters long";
+        "Lastname can only contain letters, spaces, hyphens, et apostrophes and must be at most 64 caractères long";
     }
 
     if (!editableProfile.username) {
@@ -324,6 +351,24 @@ const Profile: FunctionComponent = () => {
     }
   };
 
+  const handleFollow = async () => {
+    try {
+      await UserService.followUser(Number(currentUserId.current), Number(id));
+      setIsFollowed(true);
+    } catch (error) {
+      setGlobalError("Failed to follow user, please try again later");
+    }
+  };
+
+  const handleUnfollow = async () => {
+    try {
+      await UserService.unfollowUser(Number(currentUserId.current), Number(id));
+      setIsFollowed(false);
+    } catch (error) {
+      setGlobalError("Failed to unfollow user, please try again later");
+    }
+  };
+
   const customSelectStyles: StylesConfig<Option, boolean> = {
     control: (provided) => ({
       ...provided,
@@ -391,7 +436,8 @@ const Profile: FunctionComponent = () => {
     return <p>User not found</p>;
   }
 
-  const canEdit = currentUserId === id;
+  const canEdit = currentUserId.current === id;
+  const isAdmin = currentUserRole.current === "ADMINISTRATOR";
 
   return (
     <div className="profile-page">
@@ -407,21 +453,31 @@ const Profile: FunctionComponent = () => {
         </div>
         <p>{profile.email}</p>
         <p>{profile.bio}</p>
-        {canEdit && (
+        {canEdit ? (
           <button
             className="change-password-button"
             onClick={handlePasswordPopupClick}
           >
             Change Password
           </button>
+        ) : (
+          isFollowed !== null && (
+            <button
+              className={`follow-button ${isFollowed ? "unfollow-button" : ""}`}
+              onClick={isFollowed ? handleUnfollow : handleFollow}
+            >
+              {isFollowed ? "Unfollow" : "Follow"}
+            </button>
+          )
         )}
       </div>
       <div className="profile-right">
         {globalError && <div className="error global-error">{globalError}</div>}
         {!canEdit &&
-        (profile.visibility === "FRIENDS_ONLY" ||
-          profile.visibility === "PRIVATE") ? (
-          <p>User's information is not visible to you.</p>
+        ((profile.visibility === "FRIENDS_ONLY" && !isFriend) ||
+          profile.visibility === "PRIVATE") &&
+        !isAdmin ? (
+          <p>User's information is not visible to you</p>
         ) : (
           <>
             <label>

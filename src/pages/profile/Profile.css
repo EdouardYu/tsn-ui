@@ -1,3 +1,28 @@
+.change-password-button,
+.follow-button {
+  background-color: #1877f2;
+  color: white;
+  padding: 10px 20px;
+  margin-top: 30px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  align-self: center;
+}
+
+.change-password-button:hover,
+.follow-button:hover {
+  background-color: #155ab6;
+}
+
+.unfollow-button {
+  background-color: #e74c3c;
+}
+
+.unfollow-button:hover {
+  background-color: #c0392b;
+}
+
 .profile-page {
   display: grid;
   grid-template-columns: 1fr 2fr;
@@ -58,21 +83,6 @@
 .profile-left p {
   margin: 0;
   margin-bottom: 5px;
-}
-
-.change-password-button {
-  background-color: #1877f2;
-  color: white;
-  padding: 10px 20px;
-  margin-top: 30px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  align-self: center;
-}
-
-.change-password-button:hover {
-  background-color: #155ab6;
 }
 
 .profile-right label {
