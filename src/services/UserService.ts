@@ -43,6 +43,27 @@ const UserService = {
     );
     return response.data;
   },
+
+  followUser: async (followerId: number, followedId: number) => {
+    const response = await axiosInstance.post(
+      `/profiles/${followerId}/follow/${followedId}`
+    );
+    return response.data;
+  },
+
+  unfollowUser: async (followerId: number, followedId: number) => {
+    const response = await axiosInstance.post(
+      `/profiles/${followerId}/unfollow/${followedId}`
+    );
+    return response.data;
+  },
+
+  userFollowed: async (followerId: number, followedId: number) => {
+    const response = await axiosInstance.get(
+      `/profiles/${followerId}/followed/${followedId}`
+    );
+    return response.data;
+  },
 };
 
 export default UserService;

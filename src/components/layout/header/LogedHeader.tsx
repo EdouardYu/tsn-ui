@@ -29,7 +29,6 @@ const LogedHeader: FunctionComponent = () => {
     if (token) {
       const payload: JwtPayload = JSON.parse(atob(token.split(".")[1]));
       setUserInfo(payload);
-      console.log(payload);
     }
 
     // Close dropdown if clicking outside

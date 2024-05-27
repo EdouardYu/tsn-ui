@@ -1,11 +1,5 @@
-import {
-  FunctionComponent,
-  useState,
-  useEffect,
-  ChangeEvent,
-  useRef,
-} from "react";
-import { useParams } from "react-router-dom";
+import { FunctionComponent, useState, useEffect, ChangeEvent } from "react";
+import { useParams, useLocation } from "react-router-dom";
 import Select, { MultiValue, SingleValue, StylesConfig } from "react-select";
 import "@/pages/profile/Profile.css";
 import VerifiedBadge from "@/components/icons/CertifiedBadge";
@@ -53,6 +47,7 @@ const initialProfile: ProfileProps = {
 
 const Profile: FunctionComponent = () => {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const [profile, setProfile] = useState<ProfileProps>(initialProfile);
   const [editableProfile, setEditableProfile] =
     useState<ProfileProps>(initialProfile);
@@ -75,11 +70,17 @@ const Profile: FunctionComponent = () => {
   const [genderOptions, setGenderOptions] = useState<Option[]>([]);
   const [visibilityOptions, setVisibilityOptions] = useState<Option[]>([]);
 
-  const flag = useRef(false);
+  const token = localStorage.getItem("authToken");
+  let currentUserId: string | null = null;
+  if (token) {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    currentUserId = payload.id;
+  }
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
+        setIsLoading(true);
         const profileData = await UserService.getProfile(id);
         setProfile(profileData);
         setEditableProfile(profileData);
@@ -130,15 +131,9 @@ const Profile: FunctionComponent = () => {
       }
     };
 
-    if (flag.current === false) {
-      fetchProfile();
-      fetchEnumerations();
-    }
-
-    return () => {
-      flag.current = true;
-    };
-  }, [id]);
+    fetchProfile();
+    fetchEnumerations();
+  }, [id, location.pathname]);
 
   const handleInputChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -195,7 +190,7 @@ const Profile: FunctionComponent = () => {
       editableProfile.lastname.length > 64
     ) {
       newErrors.lastname =
-        "Lastname can only contain letters, spaces, hyphens, and apostrophes and must be at most 64 characters long";
+        "Lastname can only contain letters, spaces, hyphens, et apostrophes and must be at most 64 characters long";
     }
 
     if (!editableProfile.username) {
@@ -396,6 +391,8 @@ const Profile: FunctionComponent = () => {
     return <p>User not found</p>;
   }
 
+  const canEdit = currentUserId === id;
+
   return (
     <div className="profile-page">
       <div className="profile-left">
@@ -410,158 +407,180 @@ const Profile: FunctionComponent = () => {
         </div>
         <p>{profile.email}</p>
         <p>{profile.bio}</p>
-        <button
-          className="change-password-button"
-          onClick={handlePasswordPopupClick}
-        >
-          Change Password
-        </button>
+        {canEdit && (
+          <button
+            className="change-password-button"
+            onClick={handlePasswordPopupClick}
+          >
+            Change Password
+          </button>
+        )}
       </div>
       <div className="profile-right">
         {globalError && <div className="error global-error">{globalError}</div>}
-        <label>
-          Firstname:
-          <input
-            type="text"
-            name="firstname"
-            value={editableProfile.firstname}
-            onChange={handleInputChange}
-            disabled={!isEditing}
-            required
-          />
-          {errors.firstname && (
-            <span className="error">{errors.firstname}</span>
-          )}
-        </label>
-        <label>
-          Lastname:
-          <input
-            type="text"
-            name="lastname"
-            value={editableProfile.lastname}
-            onChange={handleInputChange}
-            disabled={!isEditing}
-            required
-          />
-          {errors.lastname && <span className="error">{errors.lastname}</span>}
-        </label>
-        <label>
-          Username:
-          <input
-            type="text"
-            name="username"
-            value={editableProfile.username}
-            onChange={handleInputChange}
-            disabled={!isEditing}
-            required
-          />
-          {errors.username && <span className="error">{errors.username}</span>}
-        </label>
-        <label>
-          Birthday:
-          <input
-            type="date"
-            name="birthday"
-            value={editableProfile.birthday}
-            onChange={handleInputChange}
-            disabled={!isEditing}
-            required
-          />
-          {errors.birthday && <span className="error">{errors.birthday}</span>}
-        </label>
-        <label>
-          Gender:
-          <Select
-            className="select"
-            styles={customSelectStyles}
-            name="gender"
-            options={genderOptions}
-            value={genderOptions.find(
-              (option) => option.value === editableProfile.gender
+        {!canEdit &&
+        (profile.visibility === "FRIENDS_ONLY" ||
+          profile.visibility === "PRIVATE") ? (
+          <p>User's information is not visible to you.</p>
+        ) : (
+          <>
+            <label>
+              Firstname:
+              <input
+                type="text"
+                name="firstname"
+                value={editableProfile.firstname}
+                onChange={handleInputChange}
+                disabled={!isEditing || !canEdit}
+                required
+              />
+              {errors.firstname && (
+                <span className="error">{errors.firstname}</span>
+              )}
+            </label>
+            <label>
+              Lastname:
+              <input
+                type="text"
+                name="lastname"
+                value={editableProfile.lastname}
+                onChange={handleInputChange}
+                disabled={!isEditing || !canEdit}
+                required
+              />
+              {errors.lastname && (
+                <span className="error">{errors.lastname}</span>
+              )}
+            </label>
+            <label>
+              Username:
+              <input
+                type="text"
+                name="username"
+                value={editableProfile.username}
+                onChange={handleInputChange}
+                disabled={!isEditing || !canEdit}
+                required
+              />
+              {errors.username && (
+                <span className="error">{errors.username}</span>
+              )}
+            </label>
+            <label>
+              Birthday:
+              <input
+                type="date"
+                name="birthday"
+                value={editableProfile.birthday}
+                onChange={handleInputChange}
+                disabled={!isEditing || !canEdit}
+                required
+              />
+              {errors.birthday && (
+                <span className="error">{errors.birthday}</span>
+              )}
+            </label>
+            <label>
+              Gender:
+              <Select
+                className="select"
+                styles={customSelectStyles}
+                name="gender"
+                options={genderOptions}
+                value={genderOptions.find(
+                  (option) => option.value === editableProfile.gender
+                )}
+                onChange={(value) =>
+                  handleGenderChange(value as SingleValue<Option>)
+                }
+                isDisabled={!isEditing || !canEdit}
+                required
+              />
+              {errors.gender && <span className="error">{errors.gender}</span>}
+            </label>
+            <label>
+              Nationality:
+              <Select
+                className="select"
+                styles={customSelectStyles}
+                name="nationality"
+                options={countryOptions}
+                value={countryOptions.find(
+                  (option) => option.value === editableProfile.nationality
+                )}
+                onChange={(value) =>
+                  handleNationalityChange(value as SingleValue<Option>)
+                }
+                isDisabled={!isEditing || !canEdit}
+                required
+              />
+              {errors.nationality && (
+                <span className="error">{errors.nationality}</span>
+              )}
+            </label>
+            <label>
+              Bio:
+              <textarea
+                name="bio"
+                value={editableProfile.bio}
+                onChange={handleInputChange}
+                disabled={!isEditing || !canEdit}
+              />
+            </label>
+            <label>
+              Visibility:
+              <Select
+                className="select"
+                styles={customSelectStyles}
+                name="visibility"
+                options={visibilityOptions}
+                value={visibilityOptions.find(
+                  (option) => option.value === editableProfile.visibility
+                )}
+                onChange={(value) =>
+                  handleVisibilityChange(value as SingleValue<Option>)
+                }
+                isDisabled={!isEditing || !canEdit}
+                required
+              />
+              {errors.visibility && (
+                <span className="error">{errors.visibility}</span>
+              )}
+            </label>
+            <label>
+              Interests:
+              <Select
+                className="select"
+                isMulti
+                options={interestsOptions}
+                styles={customSelectStyles}
+                onChange={handleInterestsChange}
+                value={
+                  editableProfile.interests
+                    ? interestsOptions.filter((option) =>
+                        editableProfile.interests.includes(option.value)
+                      )
+                    : []
+                }
+                isOptionDisabled={() => editableProfile.interests.length >= 5}
+                isDisabled={!isEditing || !canEdit}
+                required
+              />
+              {errors.interests && (
+                <span className="error">{errors.interests}</span>
+              )}
+            </label>
+            {canEdit && (
+              <div className="profile-buttons">
+                {!isEditing ? (
+                  <button onClick={handleEditClick}>Edit</button>
+                ) : (
+                  <button onClick={handleSaveClick}>Save</button>
+                )}
+              </div>
             )}
-            onChange={(value) =>
-              handleGenderChange(value as SingleValue<Option>)
-            }
-            isDisabled={!isEditing}
-            required
-          />
-          {errors.gender && <span className="error">{errors.gender}</span>}
-        </label>
-        <label>
-          Nationality:
-          <Select
-            className="select"
-            styles={customSelectStyles}
-            name="nationality"
-            options={countryOptions}
-            value={countryOptions.find(
-              (option) => option.value === editableProfile.nationality
-            )}
-            onChange={(value) =>
-              handleNationalityChange(value as SingleValue<Option>)
-            }
-            isDisabled={!isEditing}
-            required
-          />
-          {errors.nationality && (
-            <span className="error">{errors.nationality}</span>
-          )}
-        </label>
-        <label>
-          Bio:
-          <textarea
-            name="bio"
-            value={editableProfile.bio}
-            onChange={handleInputChange}
-            disabled={!isEditing}
-          />
-        </label>
-        <label>
-          Visibility:
-          <Select
-            className="select"
-            styles={customSelectStyles}
-            name="visibility"
-            options={visibilityOptions}
-            value={visibilityOptions.find(
-              (option) => option.value === editableProfile.visibility
-            )}
-            onChange={(value) =>
-              handleVisibilityChange(value as SingleValue<Option>)
-            }
-            isDisabled={!isEditing}
-            required
-          />
-          {errors.visibility && (
-            <span className="error">{errors.visibility}</span>
-          )}
-        </label>
-        <label>
-          Interests:
-          <Select
-            className="select"
-            isMulti
-            options={interestsOptions}
-            styles={customSelectStyles}
-            onChange={handleInterestsChange}
-            value={interestsOptions.filter((option) =>
-              editableProfile.interests.includes(option.value)
-            )}
-            isOptionDisabled={() => editableProfile.interests.length >= 5}
-            isDisabled={!isEditing}
-            required
-          />
-          {errors.interests && (
-            <span className="error">{errors.interests}</span>
-          )}
-        </label>
-        <div className="profile-buttons">
-          {!isEditing ? (
-            <button onClick={handleEditClick}>Edit</button>
-          ) : (
-            <button onClick={handleSaveClick}>Save</button>
-          )}
-        </div>
+          </>
+        )}
       </div>
       {showPasswordPopup && (
         <div className="popup">
