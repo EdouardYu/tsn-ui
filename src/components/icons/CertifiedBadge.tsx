@@ -1,14 +1,18 @@
 import { FunctionComponent } from "react";
 
-interface CerifiedBadgeProps {
+interface CertifiedBadgeProps {
   color: string;
+  className?: string;
 }
 
-const CerifiedBadge: FunctionComponent<CerifiedBadgeProps> = ({ color }) => (
+const CertifiedBadge: FunctionComponent<CertifiedBadgeProps> = ({
+  color,
+  className,
+}) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 22 22"
-    className="certified-badge"
+    className={className}
     style={{ fill: color }}
   >
     <title>Certified Badge</title>
@@ -16,4 +20,4 @@ const CerifiedBadge: FunctionComponent<CerifiedBadgeProps> = ({ color }) => (
   </svg>
 );
 
-export default CerifiedBadge;
+export default CertifiedBadge;

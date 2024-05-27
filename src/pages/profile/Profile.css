@@ -65,18 +65,33 @@
 
 .profile-name {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.username-container {
+  display: flex;
   align-items: center;
 }
 
-.profile-name h2 {
+.username {
+  font-size: 24px;
+  font-weight: bold;
   margin: 0;
-  margin-right: 10px;
+  display: flex;
+  align-items: center;
 }
 
 .certified-badge {
-  padding-left: 5px;
-  width: 25px;
-  height: 25px;
+  margin-left: 10px;
+  width: 30px;
+  height: 30px;
+}
+
+.fullname {
+  font-size: 18px;
+  font-weight: normal;
+  margin-bottom: 5px;
 }
 
 .profile-left h2,

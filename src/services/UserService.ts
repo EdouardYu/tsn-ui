@@ -71,6 +71,12 @@ const UserService = {
     );
     return response.data;
   },
+
+  searchUsers: async (searchTerm: string) => {
+    const response = await axiosInstance.get(`/search?term=${searchTerm}`);
+    console.log(response.data);
+    return response.data;
+  },
 };
 
 export default UserService;

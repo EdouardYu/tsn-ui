@@ -8,7 +8,7 @@ import {
 import { useParams, useLocation } from "react-router-dom";
 import Select, { MultiValue, SingleValue, StylesConfig } from "react-select";
 import "@/pages/profile/Profile.css";
-import VerifiedBadge from "@/components/icons/CertifiedBadge";
+import CertifiedBadge from "@/components/icons/CertifiedBadge";
 import UserService from "@/services/UserService";
 import { toCapitalizedWords } from "@/helpers/StringHelper";
 import Loader from "@/components/loader/Loader";
@@ -410,11 +410,9 @@ const Profile: FunctionComponent = () => {
     }),
   };
 
-  const displayUsername = () => {
+  const displayFullName = () => {
     const fullName = `${profile.firstname} ${profile.lastname}`;
-    return profile.username === fullName
-      ? profile.username
-      : `${profile.username} (${fullName})`;
+    return profile.username === fullName ? "" : `(${fullName})`;
   };
 
   const getBadgeColor = (role: string) => {
@@ -446,10 +444,18 @@ const Profile: FunctionComponent = () => {
           <img src={profile.picture} alt="Profile" />
         </div>
         <div className="profile-name">
-          <h2>{displayUsername()}</h2>
-          {profile.role !== "user" && (
-            <VerifiedBadge color={getBadgeColor(profile.role)} />
-          )}
+          <div className="username-container">
+            <h2 className="username">
+              {profile.username}
+              {profile.role !== "user" && (
+                <CertifiedBadge
+                  color={getBadgeColor(profile.role)}
+                  className="certified-badge"
+                />
+              )}
+            </h2>
+          </div>
+          <span className="fullname">{displayFullName()}</span>
         </div>
         <p>{profile.email}</p>
         <p>{profile.bio}</p>
