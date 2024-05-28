@@ -1,0 +1,68 @@
+.friends-list-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 60px;
+}
+
+.friends-list {
+  display: flex;
+  overflow-x: auto;
+  padding: 10px;
+  gap: 20px;
+}
+
+.friend-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  background-color: white;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  padding: 10px;
+  transition: transform 0.3s;
+}
+
+.friend-card:hover {
+  transform: scale(1.05);
+}
+
+.friend-card-image {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.friend-card-info {
+  margin-top: 10px;
+  width: 100%;
+}
+
+.friend-card-name {
+  font-size: 16px;
+  font-weight: bold;
+  text-align: left;
+}
+
+.friend-card-username {
+  font-size: 14px;
+  color: #555;
+  display: flex;
+  align-items: center;
+  text-align: left;
+}
+
+.friend-card-details {
+  font-size: 12px;
+  color: #555;
+  margin-top: 5px;
+  text-align: left;
+}
+
+.certified-badge {
+  width: 18px;
+  height: 18px;
+  margin-left: 5px;
+}

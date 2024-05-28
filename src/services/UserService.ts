@@ -77,6 +77,26 @@ const UserService = {
     console.log(response.data);
     return response.data;
   },
+
+  fetchFriends: async (userId: number, page: number) => {
+    const response = await axiosInstance.get(
+      `http://localhost:8080/api/profiles/${userId}/friends`,
+      {
+        params: { page, size: 20 },
+      }
+    );
+    return response.data;
+  },
+
+  fetchPotentialFriends: async (userId: number, page: number) => {
+    const response = await axiosInstance.get(
+      `http://localhost:8080/api/${userId}/friends/potential`,
+      {
+        params: { page, size: 20 },
+      }
+    );
+    return response.data;
+  },
 };
 
 export default UserService;
